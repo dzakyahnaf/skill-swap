@@ -12,7 +12,7 @@ void main() {
 }
 
 class SkillSwapApp extends StatelessWidget {
-  const SkillSwapApp({Key? key}) : super(key: key);
+  const SkillSwapApp({super.key});
 
   @override
   Widget build(BuildContext context) {
