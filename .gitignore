@@ -1,0 +1,28 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Mobile
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+
+# Secrets & Credentials
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!jsconfig.json
+!composer.json
+!vercel.json
+
+# Specific Firebase keys
+backend/serviceAccountKey.json
+mobile/android/app/google-services.json
+mobile/android/app/*.json
+
+# Logs
+*.log

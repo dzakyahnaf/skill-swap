@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { FiUsers, FiCheckCircle, FiClock, FiAlertTriangle } from 'react-icons/fi';
+import api from '../api/axios';
 
 const data = [
   { name: 'Senin', users: 400, sessions: 240 },
@@ -25,6 +26,28 @@ const StatCard = ({ title, value, icon, color }) => (
 );
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    total_users: 0,
+    active_sessions: 0,
+    completed_sessions: 0,
+    pending_reports: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await api.get('/admin/stats');
+        setStats(response.data);
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-end">
@@ -37,25 +60,25 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Pengguna" 
-          value="1,248" 
+          value={loading ? '...' : stats.total_users} 
           icon={<FiUsers className="w-6 h-6 text-primary" />} 
           color="bg-primary/10" 
         />
         <StatCard 
           title="Sesi Aktif" 
-          value="342" 
+          value={loading ? '...' : stats.active_sessions} 
           icon={<FiClock className="w-6 h-6 text-blue-500" />} 
           color="bg-blue-50" 
         />
         <StatCard 
           title="Sesi Selesai" 
-          value="8,924" 
+          value={loading ? '...' : stats.completed_sessions} 
           icon={<FiCheckCircle className="w-6 h-6 text-green-500" />} 
           color="bg-green-50" 
         />
         <StatCard 
           title="Laporan Pending" 
-          value="15" 
+          value={loading ? '...' : stats.pending_reports} 
           icon={<FiAlertTriangle className="w-6 h-6 text-orange-500" />} 
           color="bg-orange-50" 
         />

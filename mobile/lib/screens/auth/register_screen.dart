@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/custom_text_field.dart';
 import '../../widgets/custom_button.dart';
 
@@ -12,21 +14,38 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
+  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
 
   void _handleRegister() async {
     if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-      setState(() => _isLoading = false);
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      final success = await authProvider.register(
+        _usernameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text,
+        _fullNameController.text.trim(),
+      );
+      
       if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
-        );
+        if (success) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Registrasi berhasil! Silakan login.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.error),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -67,6 +86,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
               const SizedBox(height: 16),
               CustomTextField(
+                label: 'Nama Lengkap',
+                hintText: 'Masukkan nama lengkap Anda',
+                controller: _fullNameController,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Nama lengkap tidak boleh kosong';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
                 label: 'Email',
                 hintText: 'Masukkan email Anda',
                 controller: _emailController,
@@ -98,10 +129,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 },
               ),
               const SizedBox(height: 32),
-              CustomButton(
-                text: 'Daftar Sekarang',
-                isLoading: _isLoading,
-                onPressed: _handleRegister,
+              Consumer<AuthProvider>(
+                builder: (context, auth, _) => CustomButton(
+                  text: 'Daftar Sekarang',
+                  isLoading: auth.isLoading,
+                  onPressed: _handleRegister,
+                ),
               ),
               const SizedBox(height: 24),
               Row(
@@ -129,6 +162,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
+    _fullNameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

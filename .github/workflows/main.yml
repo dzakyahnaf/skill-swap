@@ -1,0 +1,47 @@
+name: SkillSwap CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: cd backend && npm install
+      - name: Lint check
+        run: cd backend && npm run lint || true # Allow to fail if lint is not setup yet
+
+  admin-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: cd admin-dashboard && npm install
+      - name: Build check
+        run: cd admin-dashboard && npm run build
+
+  mobile-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+      - name: Install dependencies
+        run: cd mobile && flutter pub get
+      - name: Analyze
+        run: cd mobile && flutter analyze

@@ -1,13 +1,43 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiAlertCircle, FiShield, FiXCircle, FiCheck } from 'react-icons/fi';
-
-const reports = [
-  { id: 1, reporter: 'Siti Aminah', reported: 'Andi Wijaya', reason: 'Spam pesan tidak pantas', date: '6 jam yang lalu', level: 'High' },
-  { id: 2, reporter: 'Rina Putri', reported: 'Unkown_User', reason: 'Tawaran skill palsu / Penipuan', date: '1 hari yang lalu', level: 'Medium' },
-  { id: 3, reporter: 'Eko Prasetyo', reported: 'Budi Santoso', reason: 'Konten profil melanggar ketentuan', date: '2 hari yang lalu', level: 'Low' },
-];
+import api from '../api/axios';
 
 const Reports = () => {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const response = await api.get('/admin/reports');
+      setReports(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAction = async (reportedId, action) => {
+    if (action === 'block') {
+      const confirm = window.confirm('Anda yakin ingin memblokir user ini?');
+      if (confirm) {
+        try {
+          await api.put(`/admin/users/${reportedId}/ban`, { reason: 'Melanggar ketentuan (Dari Laporan)' });
+          alert('User berhasil diblokir');
+          fetchReports();
+        } catch (e) {
+          alert('Gagal memblokir user');
+        }
+      }
+    } else {
+      alert('Tindakan ini akan menandai laporan sebagai diselesaikan (Implementasi API status pending/resolved menyusul).');
+    }
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div>
@@ -21,8 +51,8 @@ const Reports = () => {
             <FiAlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-bold uppercase">Laporan Aktif</p>
-            <p className="text-2xl font-black text-gray-800">12</p>
+            <p className="text-xs text-gray-400 font-bold uppercase">Laporan Total</p>
+            <p className="text-2xl font-black text-gray-800">{reports.length}</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
@@ -31,7 +61,7 @@ const Reports = () => {
           </div>
           <div>
             <p className="text-xs text-gray-400 font-bold uppercase">Diselesaikan</p>
-            <p className="text-2xl font-black text-gray-800">148</p>
+            <p className="text-2xl font-black text-gray-800">0</p>
           </div>
         </div>
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4">
@@ -39,42 +69,41 @@ const Reports = () => {
             <FiAlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs text-gray-400 font-bold uppercase">Rata-rata Respon</p>
-            <p className="text-2xl font-black text-gray-800">2.4 Jm</p>
+            <p className="text-xs text-gray-400 font-bold uppercase">Sistem</p>
+            <p className="text-2xl font-black text-gray-800">Aktif</p>
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        {reports.map((report) => (
+        {loading ? (
+          <p className="text-center py-4">Memuat laporan...</p>
+        ) : reports.length === 0 ? (
+          <p className="text-center py-4 text-gray-500">Tidak ada laporan yang perlu di-review.</p>
+        ) : reports.map((report) => (
           <div key={report.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between hover:shadow-md transition-shadow">
             <div className="flex items-start space-x-4">
-              <div className={`p-2 rounded-lg mt-1 ${
-                report.level === 'High' ? 'text-red-600 bg-red-50' : 
-                report.level === 'Medium' ? 'text-orange-600 bg-orange-50' : 'text-blue-600 bg-blue-50'
-              }`}>
+              <div className="p-2 rounded-lg mt-1 text-red-600 bg-red-50">
                 <FiAlertCircle className="w-5 h-5" />
               </div>
               <div className="space-y-1">
                 <h4 className="font-bold text-gray-800 flex items-center space-x-2">
-                  <span>Laporan: {report.reported}</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                     report.level === 'High' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-600'
-                  }`}>{report.level}</span>
+                  <span>Laporan terhadap User: {report.reported_name}</span>
                 </h4>
                 <p className="text-sm text-gray-600 font-medium">"{report.reason}"</p>
-                <p className="text-xs text-gray-400">Dilaporkan oleh <span className="underline italic">{report.reporter}</span> • {report.date}</p>
+                <p className="text-xs text-gray-400 mb-1">{report.description}</p>
+                <p className="text-xs text-gray-400">Dilaporkan oleh <span className="underline italic">{report.reporter_name}</span> • {new Date(report.created_at).toLocaleDateString()}</p>
               </div>
             </div>
 
             <div className="mt-4 md:mt-0 flex items-center space-x-3">
-              <button className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 text-sm font-bold transition-colors">
+              <button onClick={() => handleAction(report.reported_id, 'valid')} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl hover:bg-gray-100 text-sm font-bold transition-colors">
                 <FiCheck className="w-4 h-4" />
-                <span>Valid</span>
+                <span>Tandai Selesai</span>
               </button>
-              <button className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 text-sm font-bold transition-colors">
+              <button onClick={() => handleAction(report.reported_id, 'block')} className="flex-1 md:flex-none flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 text-sm font-bold transition-colors">
                 <FiXCircle className="w-4 h-4" />
-                <span>Blokir</span>
+                <span>Blokir User</span>
               </button>
             </div>
           </div>

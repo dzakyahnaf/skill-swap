@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -7,14 +8,25 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login
-    setTimeout(() => {
+    try {
+      const response = await api.post('/auth/admin/login', { email, password });
+      // The response structure from backend is { success, message, data: { admin, token } }
+      // Axios interceptor returns the full body.
+      if (response.success && response.data) {
+        localStorage.setItem('adminToken', response.data.token);
+        navigate('/dashboard');
+      } else {
+        throw new Error(response.message || 'Login gagal');
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert(error.response?.data?.message || 'Login gagal. Silakan cek email dan password Anda.');
+    } finally {
       setIsLoading(false);
-      navigate('/dashboard');
-    }, 1000);
+    }
   };
 
   return (

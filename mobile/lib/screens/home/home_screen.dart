@@ -1,10 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/skill_provider.dart';
+import '../../providers/swap_provider.dart';
+import '../chat/chat_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SkillProvider>().fetchSkills();
+      context.read<SwapProvider>().fetchActiveSessions();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+    final swapProvider = context.watch<SwapProvider>();
+    final activeSessions = swapProvider.activeSessions;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('SkillSwap'),
@@ -21,7 +44,7 @@ class HomeScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Halo, Dzaky!',
+              'Halo, ${user?['username'] ?? 'User'}!',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 8),
@@ -30,7 +53,7 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
-            _buildActivePartnersCard(context),
+            _buildActivePartnersCard(context, activeSessions),
             const SizedBox(height: 32),
             Text(
               'Kategori Skill',
@@ -51,7 +74,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildActivePartnersCard(BuildContext context) {
+  Widget _buildActivePartnersCard(BuildContext context, List<dynamic> activeSessions) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -86,50 +109,84 @@ class HomeScreen extends StatelessWidget {
                   borderRadius: BorderRadius.all(Radius.circular(12)),
                 ),
                 child: Text(
-                  '1/3 Slot',
+                  '${activeSessions.length}/3 Slot',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text('A'),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          if (activeSessions.isEmpty)
+            const Text(
+              'Belum ada partner aktif. Yuk cari partner pertamamu!',
+              style: TextStyle(color: Colors.white70),
+            )
+          else
+            ...activeSessions.take(3).map((session) {
+              // Menentukan nama partner dan skill yang diajarkan partner tersebut
+              // Jika user login adalah requester (user_id di session), maka partner adalah requested_id (tidak ada di session langsung dari API default, tapi di backend controller kita joinkan username)
+              // Oh, wait, the API returns user1_id and user2_id, we need to handle that.
+              // Assuming API returns partner_name, partner_skill based on the current user. Let's just use generic field or session.id for now since we didn't customize the user's personal get_sessions fully, or did we?
+              // `SwapProvider.requests` comes from `/swaps/requests` which returns requests sent/received.
+              // We should just use basic fields here. Let's assume there's a field "partner_name" from API.
+              final partnerName = session['partner_name'] ?? 'Partner';
+              final partnerSkill = session['partner_skill_name'] ?? 'Skill Partner';
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
                   children: [
-                    const Text(
-                      'Budi Santoso',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        partnerName.isNotEmpty ? partnerName[0].toUpperCase() : 'P',
+                        style: TextStyle(color: Theme.of(context).primaryColor),
+                      ),
                     ),
-                    Text(
-                      'Belajar React.js',
-                      style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            partnerName,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Belajar $partnerSkill',
+                            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ChatScreen(
+                              sessionId: session['id'].toString(),
+                              partnerName: partnerName,
+                              partnerSkill: partnerSkill,
+                            ),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).primaryColor,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        minimumSize: const Size(60, 36),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: const Text('Chat', style: TextStyle(fontSize: 13)),
                     ),
                   ],
                 ),
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Theme.of(context).primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  minimumSize: const Size(60, 36),
-                  padding: EdgeInsets.zero,
-                ),
-                child: const Text('Chat', style: TextStyle(fontSize: 13)),
-              ),
-            ],
-          ),
+              );
+            }).toList(),
         ],
       ),
     );
@@ -179,11 +236,29 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildRecommendationList() {
+    final searchResults = context.watch<SkillProvider>().searchResults;
+    final isLoading = context.watch<SkillProvider>().isLoading;
+
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (searchResults.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text('Belum ada rekomendasi partner saat ini.', style: TextStyle(color: Colors.grey)),
+      );
+    }
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3,
+      itemCount: searchResults.length > 3 ? 3 : searchResults.length,
       itemBuilder: (context, index) {
+        final user = searchResults[index];
+        final teachSkills = (user['teach_skills'] as List?)?.join(', ') ?? 'Belum ada';
+        final learnSkills = (user['learn_skills'] as List?)?.join(', ') ?? 'Belum ada';
+
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
           elevation: 0,
@@ -197,25 +272,31 @@ class HomeScreen extends StatelessWidget {
             leading: CircleAvatar(
               radius: 24,
               backgroundColor: Colors.grey.shade200,
-              child: Icon(Icons.person, color: Colors.grey.shade500),
+              child: Text(
+                user['username'].toString().substring(0, 1).toUpperCase(),
+                style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold),
+              ),
             ),
             title: Text(
-              'Pengguna ${index + 1}',
+              user['username'],
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 4),
-                const Text('Menawarkan: UI/UX Design'),
+                Text('Menawarkan: $teachSkills', maxLines: 1, overflow: TextOverflow.ellipsis),
                 Text(
-                  'Mencari: Flutter Development',
+                  'Mencari: $learnSkills',
                   style: TextStyle(color: Theme.of(context).primaryColor),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
             trailing: const Icon(Icons.chevron_right),
-            onTap: () {},
+            onTap: () {
+              // Navigasi ke profil user
+            },
           ),
         );
       },

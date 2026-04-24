@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profil Saya'),
@@ -25,10 +30,13 @@ class ProfileScreen extends StatelessWidget {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                    child: Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Theme.of(context).primaryColor,
+                    child: Text(
+                      user?['username']?.toString().substring(0, 1).toUpperCase() ?? 'U',
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).primaryColor,
+                      ),
                     ),
                   ),
                   Positioned(
@@ -54,14 +62,14 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Dzaky Ahnaf',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Text(
+              user?['full_name'] ?? user?['username'] ?? 'User',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'dzaky@example.com',
-              style: TextStyle(color: Colors.grey),
+            Text(
+              user?['email'] ?? 'email@example.com',
+              style: const TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 24),
             _buildStatRow(),
@@ -90,8 +98,15 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.logout,
               title: 'Keluar',
               textColor: Colors.red,
-              onTap: () {
-                // Logout Logic Go Here
+              onTap: () async {
+                await context.read<AuthProvider>().logout();
+                if (context.mounted) {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginScreen()),
+                    (route) => false,
+                  );
+                }
               },
             ),
           ],
